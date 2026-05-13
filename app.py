@@ -1,45 +1,35 @@
-import cv2
-import numpy as np
+import streamlit as st
+from PIL import Image
+import os
 
-# Load image
-image = cv2.imread("document.jpg")
-orig = image.copy()
+st.set_page_config(page_title="Image to PDF Converter")
 
-# Resize for easier processing
-ratio = image.shape[0] / 500.0
-image = cv2.resize(image, (int(image.shape[1] / ratio), 500))
+st.title("📄 Image to PDF Converter")
 
-# Convert to grayscale
-gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-# Blur + edge detection
-blur = cv2.GaussianBlur(gray, (5, 5), 0)
-edged = cv2.Canny(blur, 75, 200)
-
-# Find contours
-contours, _ = cv2.findContours(
-    edged.copy(),
-    cv2.RETR_LIST,
-    cv2.CHAIN_APPROX_SIMPLE
+uploaded_file = st.file_uploader(
+    "Upload an image",
+    type=["png", "jpg", "jpeg"]
 )
 
-contours = sorted(contours, key=cv2.contourArea, reverse=True)[:5]
+if uploaded_file is not None:
 
-doc = None
+    image = Image.open(uploaded_file)
 
-# Find 4-point contour
-for c in contours:
-    peri = cv2.arcLength(c, True)
-    approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+    st.image(image, caption="Uploaded Image", use_container_width=True)
 
-    if len(approx) == 4:
-        doc = approx
-        break
+    # Convert image to RGB
+    if image.mode == "RGBA":
+        image = image.convert("RGB")
 
-# Draw contour
-cv2.drawContours(image, [doc], -1, (0, 255, 0), 2)
+    pdf_path = "converted.pdf"
 
-# Show result
-cv2.imshow("Detected Document", image)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+    # Save as PDF
+    image.save(pdf_path, "PDF", resolution=100.0)
+
+    with open(pdf_path, "rb") as pdf_file:
+        st.download_button(
+            label="⬇ Download PDF",
+            data=pdf_file,
+            file_name="converted.pdf",
+            mime="application/pdf"
+        )
